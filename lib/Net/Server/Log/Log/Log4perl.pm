@@ -20,14 +20,14 @@ package Net::Server::Log::Log::Log4perl;
 
 use strict;
 use warnings;
+use Log::Log4perl;
 
 our %log4perl_map = (1 => "error", 2 => "warn", 3 => "info", 4 => "debug");
+our $l4p = undef;
 
 sub initialize {
     my ($class, $server) = @_;
     my $prop = $server->{'server'};
-
-    require Log::Log4perl;
 
     $server->configure({
         log4perl_conf   => \$prop->{'log4perl_conf'},
@@ -46,13 +46,34 @@ sub initialize {
         Log::Log4perl::init_and_watch($prop->{'log4perl_conf'}, $poll);
     }
 
-    my $l4p = Log::Log4perl->get_logger($logger);
+    $l4p = Log::Log4perl->get_logger($logger);
 
     return sub {
-        my ($level, $msg) = @_;
-        $level = $log4perl_map{$level} || "error";
-        $l4p->$level($msg);
+        logger(@_);
     };
+}
+
+sub TIEHANDLE {
+    my $class = shift;
+    my $self = ref $_[0] eq 'HASH' ? shift : { @_ };
+    $self->{level} ||= 3;
+    bless $self, $class;
+}
+
+sub PRINT {
+    my $self = shift;
+    unless ($self->{called}) {
+        local $self->{called} = 1;
+        $Log::Log4perl::caller_depth++;
+        logger($self->{level}, @_);
+        $Log::Log4perl::caller_depth--;
+    }
+}
+
+sub logger {
+    my ($level, $msg) = @_;
+    $level = $log4perl_map{$level} || "error";
+    $l4p->$level($msg);
 }
 
 1;

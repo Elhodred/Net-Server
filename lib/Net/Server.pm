@@ -166,6 +166,8 @@ sub post_configure {
     if (length($prop->{'log_file'})
         && !$prop->{'log_function'}) {
         open STDERR, '>&_SERVER_LOG' || die "Cannot open STDERR to _SERVER_LOG [$!]";
+    } elsif ($prop->{'log_file'} eq "Log::Log4perl"){
+        tie *STDERR, "Net::Server::Log::Log::Log4perl";
     } elsif ($prop->{'setsid'}) { # completely daemonize by closing STDERR (should be done after fork)
         open STDERR, '>&STDOUT' || die "Cannot open STDERR to STDOUT [$!]";
     }
